@@ -113,6 +113,11 @@ namespace EvilCompany.Patches
             if (Plugin.inputActionClass.DebugKey.WasPressedThisFrame()) // DEBUG
             {
                 Plugin.Log.LogInfo("Current Evil Points: " + Plugin.evilPoints);
+                Plugin.Log.LogInfo("Points needed to kill: " + Config.killCost.Value);
+                Plugin.Log.LogInfo("Points needed to damage: " + Config.damageCost.Value);
+                Plugin.Log.LogInfo("Points needed to force crouch/uncrouch: " + Config.crouchCost.Value);
+                Plugin.Log.LogInfo("Points needed to delete held item: " + Config.deleteCost.Value);
+                Plugin.Log.LogInfo("Points needed to prevent jumping: " + Config.jumpCost.Value);
             }
         }
 
