@@ -1,7 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using LC_API.ServerAPI;
 using System;
 using EvilCompany.Patches;
 using UnityEngine.InputSystem;
@@ -50,13 +49,10 @@ namespace EvilCompany
             evilPoints = 0;
             canJump = true;
             Network.RegisterAll();
-            // Networking.GetString = (Action<string, string>)Delegate.Combine(Networking.GetString, new Action<string, string>(OnReceiveBroadcast));
 
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
         }
 
-        // To Do: Look into making separate handlers for different orders (kill, damage, crouch, etc.)
-        // If doing above, it may be better to make a class for the handlers: https://github.com/steven4547466/LC-API/wiki/Networking
         [NetworkMessage(signature)]
         public static void EvilCompanyHandler(ulong sender, string data)
         {
@@ -108,40 +104,6 @@ namespace EvilCompany
             Log.LogInfo("Packed data: " + packedData.TrimEnd()); // DEBUG
             return packedData.TrimEnd();
         }
-
-        /*
-        private void OnReceiveBroadcast(string signature, string data)
-        {
-            if (!signature.Equals(Plugin.signature) || !BroadcastDataSanityCheck(data))
-                return;
-
-            string[] unpackedData = data.Split();
-            targetID = ulong.Parse(unpackedData[1]);
-            switch (unpackedData[0])
-            {
-                case "Kill":
-                    isExecutingSomeone = true;
-                    break;
-                case "Damage":
-                    isDamagingSomeone = true;
-                    break;
-                case "Crouch":
-                    isForcingSomeoneToCrouch = true;
-                    break;
-                case "Delete":
-                    isDeletingSomeonesHeldItem = true;
-                    break;
-                case "NoJump":
-                    if (PlayerControllerBPatch.actualClientID != targetID)
-                        return;
-                    canJump = false;
-                    break;
-                default:
-                    Logger.LogWarning("Received unknown order!");
-                    break;
-            }
-        }
-        */
 
         private static bool BroadcastDataSanityCheck(string data)
         {

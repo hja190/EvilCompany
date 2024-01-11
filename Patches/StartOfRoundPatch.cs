@@ -1,6 +1,5 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
-using LC_API.ServerAPI;
 using UnityEngine;
 
 namespace EvilCompany.Patches
@@ -35,7 +34,6 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                // Networking.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
                 Plugin.evilPoints -= Plugin.killCost;
             }
             if (Plugin.inputActionClass.DamageKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.damageCost)
@@ -54,7 +52,6 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                // Networking.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
                 Plugin.evilPoints -= Plugin.damageCost;
             }
             if (Plugin.inputActionClass.CrouchKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.crouchCost)
@@ -73,7 +70,6 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                // Networking.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
                 Plugin.evilPoints -= Plugin.crouchCost;
             }
             if (Plugin.inputActionClass.DeleteKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.deleteItemCost)
@@ -92,7 +88,6 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                // Networking.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
                 Plugin.evilPoints -= Plugin.deleteItemCost;
             }
             if (Plugin.inputActionClass.NoJumpKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.noJumpCost)
@@ -111,10 +106,9 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                // Networking.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
                 Plugin.evilPoints -= Plugin.noJumpCost;
             }
-            if (Plugin.inputActionClass.DebugKey.WasPressedThisFrame()) // DEBUG ONLY
+            if (Plugin.inputActionClass.DebugKey.WasPressedThisFrame()) // DEBUG
             {
                 Plugin.Log.LogInfo("Current Evil Points: " + Plugin.evilPoints);
             }
