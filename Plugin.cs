@@ -6,6 +6,11 @@ using EvilCompany.Patches;
 using UnityEngine.InputSystem;
 using LethalCompanyInputUtils.Api;
 using LC_API.Networking;
+using BepInEx.Configuration;
+using Unity.Netcode;
+using Unity.Collections;
+using GameNetcodeStuff;
+using System.Runtime.CompilerServices;
 
 namespace EvilCompany
 {
@@ -15,18 +20,17 @@ namespace EvilCompany
         internal static ManualLogSource Log;
 
         public static Plugin Instance;
+        public static Config MyConfig { get; internal set; }
 
         public static readonly InputActionClass inputActionClass = new InputActionClass();
 
         public const string signature = PluginInfo.PLUGIN_GUID;
-        public const int killCost = 5;
-        public const int damageCost = 2;
-        public const int crouchCost = 1;
-        public const int deleteItemCost = 3;
-        public const int noJumpCost = 4;
 
         public static int evilPoints;
         public static ulong targetID;
+        public static bool isSyncedWithHost = false;
+        public static int[] clientConfigVals = new int[8];
+
         public static bool canJump { get; private set; }
         public static bool isExecutingSomeone = false;
         public static bool isDamagingSomeone = false;
@@ -44,10 +48,11 @@ namespace EvilCompany
             harmony.PatchAll(typeof(Plugin));
             harmony.PatchAll(typeof(PlayerControllerBPatch));
             harmony.PatchAll(typeof(StartOfRoundPatch));
+            harmony.PatchAll(typeof(Config));
 
             Log = Logger;
-            evilPoints = 0;
             canJump = true;
+            MyConfig = new Config(Config);
             Network.RegisterAll();
 
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
@@ -60,7 +65,8 @@ namespace EvilCompany
                 return;
 
             string[] unpackedData = data.Split();
-            targetID = ulong.Parse(unpackedData[1]);
+            if (unpackedData.Length < 3)
+                targetID = ulong.Parse(unpackedData[1]);
             switch (unpackedData[0])
             {
                 case "Kill":
@@ -88,6 +94,22 @@ namespace EvilCompany
                         canJump = false;
                     }
                     break;
+                case "Config":
+                    if (PlayerControllerBPatch.isHost || isSyncedWithHost)
+                        break;
+
+                    EvilCompany.Config.evilPointsStart.Value = int.Parse(unpackedData[1]);
+                    EvilCompany.Config.evilPointsIncrement.Value = int.Parse(unpackedData[2]);
+                    EvilCompany.Config.killCost.Value = int.Parse(unpackedData[3]);
+                    EvilCompany.Config.damageCost.Value = int.Parse(unpackedData[4]);
+                    EvilCompany.Config.damageAmount.Value = int.Parse(unpackedData[5]);
+                    EvilCompany.Config.crouchCost.Value = int.Parse(unpackedData[6]);
+                    EvilCompany.Config.deleteCost.Value = int.Parse(unpackedData[7]);
+                    EvilCompany.Config.jumpCost.Value = int.Parse(unpackedData[8]);
+
+                    evilPoints = EvilCompany.Config.evilPointsStart.Value;
+                    Log.LogInfo("Synced config with host!"); // DEBUG
+                    break;
                 default:
                     Log.LogWarning("Received unknown order!");
                     break;
@@ -108,21 +130,43 @@ namespace EvilCompany
         private static bool BroadcastDataSanityCheck(string data)
         {
             string[] unpackedData = data.Split();
-            if (unpackedData.Length < 2)
+            if (unpackedData.Length < 2 || (unpackedData[0].Equals("Config") && unpackedData.Length < 9))
             {
                 Log.LogError("Missing data!");
                 return false;
             }
 
-            try
+            if (unpackedData.Length < 3)
             {
-                ulong target = ulong.Parse(unpackedData[1]);
+                try
+                {
+                    ulong target = ulong.Parse(unpackedData[1]);
+                }
+                catch (Exception e)
+                {
+                    Log.LogError(e);
+                    Log.LogError("Target string could not be parsed as ulong!");
+                    return false;
+                }
             }
-            catch (Exception e)
+            else
             {
-                Log.LogError(e);
-                Log.LogError("Target string could not be parsed as ulong!");
-                return false;
+                for (int i = 0; i < unpackedData.Length; i++)
+                {
+                    if (i == 0)
+                        continue;
+
+                    try
+                    {
+                        ulong value = ulong.Parse(unpackedData[i]);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.LogError(e);
+                        Log.LogError("Value string could not be parsed as ulong!");
+                        return false;
+                    }
+                }
             }
 
             return true;
@@ -135,7 +179,19 @@ namespace EvilCompany
 
         public void IncrementEvilPoints()
         {
-            evilPoints += 1;
+            evilPoints += EvilCompany.Config.evilPointsIncrement.Value;
+        }
+
+        public static void ResetConfigVars()
+        {
+            EvilCompany.Config.evilPointsStart.Value = clientConfigVals[0];
+            EvilCompany.Config.evilPointsIncrement.Value = clientConfigVals[1];
+            EvilCompany.Config.killCost.Value = clientConfigVals[2];
+            EvilCompany.Config.damageCost.Value = clientConfigVals[3];
+            EvilCompany.Config.damageAmount.Value = clientConfigVals[4];
+            EvilCompany.Config.crouchCost.Value = clientConfigVals[5];
+            EvilCompany.Config.deleteCost.Value = clientConfigVals[6];
+            EvilCompany.Config.jumpCost.Value = clientConfigVals[7];
         }
     }
 
@@ -158,5 +214,86 @@ namespace EvilCompany
 
         [InputAction("<Keyboard>/#(5)", Name = "Debug Key")]
         public InputAction DebugKey { get; set; }
+    }
+
+    [Serializable]
+    public class Config
+    {
+        public static ConfigEntry<int> evilPointsStart;
+        public static ConfigEntry<int> evilPointsIncrement;
+        public static ConfigEntry<int> killCost;
+        public static ConfigEntry<int> damageCost;
+        public static ConfigEntry<int> damageAmount;
+        public static ConfigEntry<int> crouchCost;
+        public static ConfigEntry<int> deleteCost;
+        public static ConfigEntry<int> jumpCost;
+
+        public Config(ConfigFile cfg)
+        {
+            evilPointsStart = cfg.Bind(
+                "General",
+                "Starting Evil Points",
+                0,
+                "How much evil points you start the game with"
+            );
+
+            evilPointsIncrement = cfg.Bind(
+                "General",
+                "Evil Points Increment",
+                1,
+                "How much evil points you gain at the end of each round"
+            );
+
+            killCost = cfg.Bind(
+                "General",
+                "Kill Cost",
+                10,
+                "How much evil points you need to kill someone on command"
+            );
+
+            damageCost = cfg.Bind(
+                "General",
+                "Damage Cost",
+                3,
+                "How much evil points you need to damage someone on command"
+            );
+
+            damageAmount = cfg.Bind(
+                "General",
+                "Damage Amount",
+                10,
+                "How much damage a person takes from the damage command"
+            );
+
+            crouchCost = cfg.Bind(
+                "General",
+                "Crouch Cost",
+                1,
+                "How much evil points you need to force someone to crouch on command"
+            );
+
+            deleteCost = cfg.Bind(
+                "General",
+                "Crouch Cost",
+                5,
+                "How much evil points you need to delete someone's held item on command"
+            );
+
+            jumpCost = cfg.Bind(
+                "General",
+                "No Jump Cost",
+                5,
+                "How much evil points you need to prevent someone from jumping on command"
+            );
+
+            Plugin.clientConfigVals[0] = evilPointsStart.Value;
+            Plugin.clientConfigVals[1] = evilPointsIncrement.Value;
+            Plugin.clientConfigVals[2] = killCost.Value;
+            Plugin.clientConfigVals[3] = damageCost.Value;
+            Plugin.clientConfigVals[4] = damageAmount.Value;
+            Plugin.clientConfigVals[5] = crouchCost.Value;
+            Plugin.clientConfigVals[6] = deleteCost.Value;
+            Plugin.clientConfigVals[7] = jumpCost.Value;
+        }
     }
 }

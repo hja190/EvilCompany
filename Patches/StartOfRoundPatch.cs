@@ -1,6 +1,8 @@
-﻿using GameNetcodeStuff;
+﻿using BepInEx.Configuration;
+using GameNetcodeStuff;
 using HarmonyLib;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 namespace EvilCompany.Patches
 {
@@ -18,7 +20,7 @@ namespace EvilCompany.Patches
         [HarmonyPostfix]
         private static void Broadcast(StartOfRound __instance)
         {
-            if (Plugin.inputActionClass.KillKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.killCost)
+            if (Plugin.inputActionClass.KillKey.WasPressedThisFrame() && Plugin.evilPoints >= Config.killCost.Value)
             {
                 Plugin.Log.LogInfo("Broadcasting Kill message!"); // DEBUG
 
@@ -34,9 +36,9 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                Plugin.evilPoints -= Plugin.killCost;
+                Plugin.evilPoints -= Config.killCost.Value;
             }
-            if (Plugin.inputActionClass.DamageKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.damageCost)
+            if (Plugin.inputActionClass.DamageKey.WasPressedThisFrame() && Plugin.evilPoints >= Config.damageCost.Value)
             {
                 Plugin.Log.LogInfo("Broadcasting Damage message!"); // DEBUG
 
@@ -52,9 +54,9 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                Plugin.evilPoints -= Plugin.damageCost;
+                Plugin.evilPoints -= Config.damageCost.Value;
             }
-            if (Plugin.inputActionClass.CrouchKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.crouchCost)
+            if (Plugin.inputActionClass.CrouchKey.WasPressedThisFrame() && Plugin.evilPoints >= Config.crouchCost.Value)
             {
                 Plugin.Log.LogInfo("Broadcasting Crouch message!"); // DEBUG
 
@@ -70,9 +72,9 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                Plugin.evilPoints -= Plugin.crouchCost;
+                Plugin.evilPoints -= Config.crouchCost.Value;
             }
-            if (Plugin.inputActionClass.DeleteKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.deleteItemCost)
+            if (Plugin.inputActionClass.DeleteKey.WasPressedThisFrame() && Plugin.evilPoints >= Config.deleteCost.Value)
             {
                 Plugin.Log.LogInfo("Broadcasting Delete message!"); // DEBUG
 
@@ -88,9 +90,9 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                Plugin.evilPoints -= Plugin.deleteItemCost;
+                Plugin.evilPoints -= Config.deleteCost.Value;
             }
-            if (Plugin.inputActionClass.NoJumpKey.WasPressedThisFrame() && Plugin.evilPoints >= Plugin.noJumpCost)
+            if (Plugin.inputActionClass.NoJumpKey.WasPressedThisFrame() && Plugin.evilPoints >= Config.jumpCost.Value)
             {
                 Plugin.Log.LogInfo("Broadcasting NoJump message!"); // DEBUG
 
@@ -106,7 +108,7 @@ namespace EvilCompany.Patches
                     targetID
                 };
                 LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
-                Plugin.evilPoints -= Plugin.noJumpCost;
+                Plugin.evilPoints -= Config.jumpCost.Value;
             }
             if (Plugin.inputActionClass.DebugKey.WasPressedThisFrame()) // DEBUG
             {
@@ -167,7 +169,7 @@ namespace EvilCompany.Patches
                         continue;
                     }
 
-                    playerController.DamagePlayer(10);
+                    playerController.DamagePlayer(Config.damageAmount.Value);
                 }
                 Plugin.isDamagingSomeone = false;
                 Plugin.targetID = 999;
@@ -226,6 +228,44 @@ namespace EvilCompany.Patches
                 Plugin.isDeletingSomeonesHeldItem = false;
                 Plugin.targetID = 999;
             }
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), "OnEnable")]
+        [HarmonyPostfix]
+        private static void SetEvilPoints()
+        {
+            Plugin.evilPoints = Config.evilPointsStart.Value;
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), "StartGame")]
+        [HarmonyPostfix]
+        private static void SyncConfig() // https://lethal.wiki/dev/intermediate/custom-config-syncing did not work...
+        {
+            if (!PlayerControllerBPatch.isHost)
+                return;
+
+            string[] data = new string[] {
+                "Config",
+                Config.evilPointsStart.Value.ToString(),
+                Config.evilPointsIncrement.Value.ToString(),
+                Config.killCost.Value.ToString(),
+                Config.damageCost.Value.ToString(),
+                Config.damageAmount.Value.ToString(),
+                Config.crouchCost.Value.ToString(),
+                Config.deleteCost.Value.ToString(),
+                Config.jumpCost.Value.ToString()
+            };
+
+            Plugin.Log.LogInfo("Syncing config with clients!");
+            LC_API.Networking.Network.Broadcast(Plugin.signature, Plugin.Instance.PackBroadcastData(data));
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), "OnDisable")]
+        [HarmonyPostfix]
+        private static void ResetVars()
+        {
+            Plugin.isSyncedWithHost = false;
+            Plugin.ResetConfigVars();
         }
 
         private static string GetTargetedPlayer(StartOfRound __instance)

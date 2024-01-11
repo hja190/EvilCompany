@@ -1,5 +1,6 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
+using System.Runtime.CompilerServices;
 
 namespace EvilCompany.Patches
 {
@@ -7,13 +8,18 @@ namespace EvilCompany.Patches
     {
         public static ulong actualClientID { get; private set; }
         public static bool isDead { get; private set; }
+        public static bool isHost { get; private set; }
 
         [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
         [HarmonyPostfix]
-        private static void SetActualClientID(PlayerControllerB __instance)
+        private static void SetVars(PlayerControllerB __instance)
         {
             actualClientID = __instance.actualClientId;
             isDead = __instance.isPlayerDead;
+
+            isHost = __instance.NetworkManager.IsHost;
+            if (isHost)
+                Plugin.isSyncedWithHost = true;
         }
 
         [HarmonyPatch(typeof(PlayerControllerB), "KillPlayer")]
