@@ -8,6 +8,7 @@ You earn evil points at the end of every round. Spend evil points while spectati
 - 8 Key (Force them to crouch)
 - 7 Key (Delete held item)
 - 6 Key (Prevent jumping)
+- 5 Key (View evil points through console)
 
 ## Requirements
 * Lethal Company
