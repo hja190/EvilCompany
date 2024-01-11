@@ -29,3 +29,6 @@ Either:
 
 ### I keep craching
 This is my first ever BepInEx mod so that's to be expected. All I can say is to not spam any of the keys.
+
+### Current Issues
+Evil points don't save after you leave the server, it gets reset to the host's starting evil points value.
