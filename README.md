@@ -25,7 +25,6 @@ Yes... I'm currently working on making a host only version of this mod but for n
 Either:
 - If you have coding and modding knowledge you can take the code here and make it yourself
 - Wait until I make a host only version of this mod
-- Try out MoreEvilCompany
 
 ### I keep craching
 This is my first ever BepInEx mod so that's to be expected. All I can say is to not spam any of the keys.
